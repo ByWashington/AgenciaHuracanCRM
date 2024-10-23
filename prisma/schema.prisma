@@ -1,0 +1,201 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Store {
+  id          String @id @default(uuid())
+  name        String
+  userId      String
+  billboards  Billboard[] @relation("StoreToBillboard")
+  places      Place[] @relation("StoreToPlace")
+  experiences Experience[] @relation("StoreToExperience")
+  cuisines    Cuisine[] @relation("StoreToCuisine")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Billboard {
+  id          String @id @default(uuid())
+  storeId     String
+  store       Store @relation("StoreToBillboard", fields: [storeId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  label       String
+  description String?
+  imageUrl    String
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([storeId])
+
+}
+
+model Language {  
+  id          String @id
+  name        String
+
+  Cuisines    Cuisine[] @relation("LanguageToCuisine")
+  ExperienceDetails ExperienceDetails[] @relation("LanguageToExperience")
+  PlaceDetails PlaceDetails[] @relation("LanguageToPlace")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([id])
+}
+
+model Place {
+  id            String @id @default(uuid())
+  storeId       String
+  store         Store @relation("StoreToPlace", fields: [storeId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  code          String 
+  kidFriendly   Boolean
+  hours         String     
+  otherUnits    Boolean
+  address       String
+  
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  experiences PlacesOnExperiences[]
+  images PlaceImage[] @relation("ImagesToPlace")
+  placeDetail PlaceDetails? @relation("PlaceDetailsToPlace")
+  
+  cuisines    CuisineOnPlaces[]
+
+  @@index([storeId])
+}
+
+model PlaceDetails {
+
+  id          String @id @default(uuid())
+  
+  languageId    String
+  language      Language @relation("LanguageToPlace", fields: [languageId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  placeId       String @unique
+  Place         Place @relation("PlaceDetailsToPlace", fields: [placeId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  label         String    
+  description   String @db.Text
+  tip           String
+
+  @@index([languageId])
+
+}
+
+
+model Cuisine {
+  id          String @id @default(uuid())
+  name        String
+  storeId     String
+  store       Store @relation("StoreToCuisine", fields: [storeId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  languageId    String @unique
+  language      Language @relation("LanguageToCuisine", fields: [languageId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  places      CuisineOnPlaces[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([languageId])
+}
+
+model CuisineOnPlaces {
+  place            Place        @relation(fields: [placeId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  placeId          String
+  cuisine          Cuisine      @relation(fields: [cuisineId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  cuisineId        String
+  assignedAt       DateTime     @default(now())
+  assignedBy       String
+
+  @@id([placeId, cuisineId])
+  @@index([cuisineId])
+}
+
+model Experience {
+  id          String @id @default(uuid())
+  storeId     String
+  store       Store @relation("StoreToExperience", fields: [storeId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  imageUrl    String
+  price       Decimal
+  isFeatured  Boolean @default(false)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  places      PlacesOnExperiences[]
+  
+  experienceDetail ExperienceDetails? @relation("ExperienceDetailsToExperience")
+  Image ExperienceImage[] @relation("ImagesToExperience")
+
+  @@index([storeId])
+}
+
+model ExperienceDetails {
+  id          String @id @default(uuid())
+
+  languageId    String @unique
+  language      Language @relation("LanguageToExperience", fields: [languageId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  
+  experienceId    String @unique
+  experience      Experience @relation("ExperienceDetailsToExperience", fields: [experienceId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  label       String
+  description String
+
+  @@index([languageId])
+}
+
+
+model PlacesOnExperiences {
+  experience       Experience @relation(fields: [experienceId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  experienceId     String // relation scalar field (used in the `@relation` attribute above)
+  place            Place      @relation(fields: [placeId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  placeId          String // relation scalar field (used in the `@relation` attribute above)
+  assignedAt       DateTime   @default(now())
+  assignedBy       String
+
+  @@id([experienceId, placeId])
+  @@index([placeId])
+}
+
+model PlaceImage {
+  id          String @id @default(uuid())
+  
+  placeId     String
+  place       Place @relation("ImagesToPlace",fields: [placeId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  url         String
+
+  @@index([id])
+  @@index([placeId])
+}
+
+model ExperienceImage {
+  id          String @id @default(uuid())
+  
+  experienceId     String
+  experience       Experience @relation("ImagesToExperience",fields: [experienceId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  url         String
+
+  @@index([id])
+  @@index([experienceId])
+}
